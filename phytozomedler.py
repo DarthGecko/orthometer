@@ -56,7 +56,7 @@ def make_my_xml(filters, attributes):
     s.add_dataset_to_xml('phytozome')
     filters, attributes = test_selections(filters, attributes)
     for f in filters:
-        print filtSelections[f]
+        print (filtSelections[f])
         s.add_filter_to_xml(*filtSelections[f])
 
     for a in attrSelections[attributes][0]:
@@ -80,7 +80,7 @@ def read_my_file(myfile):
 def get_results(qury):
     #if qury.endswith('.xml')
     #make this function also compatible with directly taking in an xml file name
-    print "Querying " + s.host + "\n"
+    print ("Querying " + s.host + "\n")
     res = s.query(qury)
     return res
 
@@ -122,11 +122,11 @@ def export_results(result, outname, attributeset):
 
 def sample_out(result):
     # The result's data type is usually "unicode"
-    print 'Your output looks like:\n'
-    print "length: " + str(len(result))
+    print ('Your output looks like:\n')
+    print ("length: " + str(len(result)))
     res = result.split('\n')
     for x in res[0:25]:
-        print x
+        print (x)
 
 if __name__ == "__main__":
     import argparse
@@ -140,13 +140,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #interp input
-    fts, ats = args.filterSet, args.attributeSet
+    fts = args.filterSet
+    print (fts)
+    ats = args.attributeSet
     if args.verbose > 1:
-        print "selected filters: {}\n".format(fts)
-        print "selected attributes: {}\n".format(ats)
+        print ("selected filters: {}\n".format(fts))
+        print ("selected attributes: {}\n".format(ats))
     myQuery = make_my_xml(fts, ats)
     if args.verbose > 2:
-        print myQuery
+        print (myQuery)
     resulting_data = get_results(myQuery)
 
     ## output file
