@@ -46,21 +46,25 @@ filtSelections = {  # Protip: DO NOT put spaces into these strings!
 
 attrSelections = {
     # ALMOST ALL info
-    'unsplicedTranscript': [
-        ['gene_name1', 'transcript_name1', 'transcript_exon_intron',
-         'organism_name', 'chr_name1', 'gene_chrom_start', 'gene_chrom_end',
-         'gene_chrom_strand', 'transcript_id', 'transcript_chrom_start',
-         'transcript_chrom_end', 'peptide_name', 'exon_chrom_start',
-         'exon_chrom_end', 'exon_cds_start', 'exon_cds_end', '5_utr_start',
-         '5_utr_end', '3_utr_start', '3_utr_end'],
-         [8, 9, float('nan'), 10, 11, 12, 13, 14, 15, 16, 17,
-          18, 0, 1, 2, 3, 4, 5, 6, 7]
-    ]
+    'unsplicedTranscript':
+        {
+            'data_types':
+                ['gene_name1', 'transcript_name1', 'transcript_exon_intron',
+                 'organism_name', 'chr_name1', 'gene_chrom_start',
+                 'gene_chrom_end', 'gene_chrom_strand', 'transcript_id',
+                 'transcript_chrom_start', 'transcript_chrom_end',
+                 'peptide_name', 'exon_chrom_start', 'exon_chrom_end',
+                 'exon_cds_start', 'exon_cds_end', '5_utr_start', '5_utr_end',
+                 '3_utr_start', '3_utr_end'],
+            'data_positions': [8, 9, float('nan'), 10, 11, 12, 13, 14, 15, 16,
+                               17, 18, 0, 1, 2, 3, 4, 5, 6, 7],
+            'formats': ["FASTA"],
+        },
+
     # Add more sets here, will need to make biomart.py better to accept
     # files besides FASTA
     # set2:
 }
-
 
 def make_example():
     ret = s.registry()
@@ -94,7 +98,7 @@ def make_my_xml(filters, attributes):
         print (filtSelections[f])
         s.add_filter_to_xml(*filtSelections[f])
 
-    for a in attrSelections[attributes][0]:
+    for a in attrSelections[attributes]['data_types']:
         s.add_attribute_to_xml(a)
 
     return s.get_xml()
@@ -124,14 +128,14 @@ def replace_headers(fasta, attributeset):
     import re
 
     def format_headers(matchobj):
-        vs = matchobj.group(1).split('|')
+        vs = matchobj.group(1).split('|') #values
         out_string = '>'
         # put all of the header data into xml style tags
-        for i in range(0, len(attrSelections[attributeset][1])):
-            if not isnan(attrSelections[attributeset][1][i]):
+        for i in range(0, len(attrSelections[attributeset]['data_positions'])):
+            if not isnan(attrSelections[attributeset]['data_positions'][i]):
                 out_string = '{}{}="{}" '.format(out_string,
-                    attrSelections[attributeset][0][i],
-                    vs[attrSelections[attributeset][1][i]])
+                    attrSelections[attributeset]['data_types'][i],
+                    vs[attrSelections[attributeset]['data_types'][i]])
         return out_string
 
     new_out = re.sub('^>(.+)', format_headers, fasta, flags=re.M)
