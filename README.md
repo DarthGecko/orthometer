@@ -10,3 +10,5 @@ Working on:
 * Making the biomart downloader more versatile for multiple filetypes
 * Organizing intron data into file structutes
 * Motif finding algorithms
+
+Worth looking at again: https://github.com/tanghaibao/jcvi/blob/master/apps/biomart.py

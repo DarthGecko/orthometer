@@ -3,14 +3,20 @@
 # Getting introns from FASTA fiels made by phytozomedler
 from Bio import SeqIO
 import re
+from Bio import SeqIO
+from Bio import Seq
+from Bio.Alphabet import IUPAC
 
 
 # Things to work out:
 # How are we storing the data on the introns? In RAM or ROM?
 # Make a FASTA file  of introns?
 # Set parameters of the record using title2ids
-# Reference pages:   http://biopython.org/DIST/docs/api/Bio.SeqIO-module.html
-#                    http://biopython.org/DIST/docs/api/Bio.SeqIO.FastaIO-module.html
+# Reference pages:
+#           http://biopython.org/DIST/docs/api/Bio.SeqIO-module.html
+#           http://biopython.org/DIST/docs/api/Bio.SeqIO.FastaIO-module.html
+
+# Negative strands??!
 
 '''
 However, you can supply a title2ids function to alter this:
@@ -22,31 +28,97 @@ However, you can supply a title2ids function to alter this:
     ...         print(record.id)
 '''
 
-def
-
-def strip_introns(fasta, chrom_or_cds):  #want the chrom (refers to coordinates)
-    records = SeqIO.parse(fasta, "fasta")
-    for seq_record in records:
-        exon_positions = {}
-
-        pos = ['beg', 'end']
-        for i in pos:
-            r = re.match('exon_{}_{}="(.+)"'.format(chrom_or_cds, i),
-                         seq_record.id).split(';')
-            exon_positions[i] = r
-        # intron fasta file?
-        intron_count = len(exon_positions['beg']) - 1  # Is this right?
-        print(repr(seq_record.seq))
-        print(len(seq_record))
-        intron_positions = {}
-        intron_positions['beg'] = []
-        intron_positions['end'] = []
-        for i in xrange(0, intron_count-1):  # Strand is represented by 1 or -1
-
-            intron_positions['beg'].append(exon_positions['end'][i] + 1)
-            intron_positions['end'].append(exon_positions['beg'][i+1] - 1)
-        introns = []
-        for i in xrange(0, intron_count - 1):
-            introns.append(seq_record.seq[intron_positions])
+def get_exon_id(header):  # Gives each record.name the exon coords septed by |
+    return (re.match('.+name1="([^"]+)"', header).group(1),
+            '|'.join(re.findall('exon_chrom_[star|end]+="([\d;]+)"', header)),
+            header)
 
 
+def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coordinates)
+    with open(fasta) as handle:
+        intron_file = '{}_introns.FASTA'.format(fasta)
+        open(intron_file, 'w')
+        example = 0
+        for seq_record in SeqIO.FastaIO.FastaIterator(handle,
+                                                      title2ids=get_exon_id):
+            if verb:
+                print (seq_record.name)
+            exon_positions = {}
+            pos = ['beg', 'end']
+            r = seq_record.name.split('|')
+            for i in range(2):
+                exon_positions[pos[i]] = [int(x) for x in r[i].split(';')]
+            strand = re.match('.+gene_chrom_strand="([^"]+)"',
+                              seq_record.description).group(1)
+            print ('strand: ', strand)
+            start = int(re.match('.+transcript_chrom_start="([^"]+)"',
+                                 seq_record.description).group(1))
+            # intron fasta file?
+            print ('Exons:')
+
+            intron_count = len(exon_positions['beg']) - 1  # Is this right?
+            for i in range(0, intron_count+1):
+                print ('{} - b: {} e: {}'.format(i+1, exon_positions['beg'][i],
+                                                 exon_positions['end'][i]))
+            # print ('There should be {} introns.'.format(intron_count))
+            intron_positions = {'beg': [], 'end': []}
+            print ('Introns: ')
+            for i in range(1, intron_count+1):  # Strand represented by 1 or -1
+                # if strand == "1":
+                    intron_positions['beg'].append(exon_positions['end'][i-1]+1)
+                    intron_positions['end'].append(exon_positions['beg'][i] - 1)
+                # else:
+                #     intron_positions['beg'].append(exon_positions['end'][i] + 1)
+                #     intron_positions['end'].append(exon_positions['beg'][i-1]-1)
+            for i in range(0, intron_count):
+                print ('{} - b: {} e: {}'.format(i+1, intron_positions['beg'][i],
+                                                 intron_positions['end'][i]))
+
+            # return intron_positions # Is this all I want? Won't work with
+            #   per transcript loop
+
+            introns = []
+
+            for i in range(0, intron_count):
+                # intron = ''
+                if strand == '1':
+                    intron = seq_record.seq[intron_positions['beg'][i] -
+                                            start:intron_positions['end'][i] -
+                                            start]
+                else:
+                    intron = seq_record.seq[intron_positions['beg'][i] -
+                                            start:intron_positions['end'][i] -
+                                                  start]
+                    # intron = seq_record.seq[intron_positions['end'][i] -
+                    #                         start:intron_positions['beg'][i] -
+                    #                         start]
+                    intron = intron.reverse_complement()
+                introns.append(intron)
+            if verb:
+                print ('The introns are ')
+                for x in introns:
+                    print (str(x))
+            example = example + 1
+            if example > 4 and test:
+                break
+
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="""Make intron fasta files""")
+    parser.add_argument("file_name",
+        help="fasta file input")
+    parser.add_argument("outputf", nargs="?",
+        help="Optional output file name", default="outputf.FASTA")
+    parser.add_argument('--verbose', '-v', action='count',
+                        help='Multiple flags increase verbosity')
+    parser.add_argument('-test', '-t', action='store_true',
+                        help='Do not store the data')
+    args = parser.parse_args()
+
+    # interp input
+    strip_introns(args.file_name, args.verbose, args.test)
+
+
+# gene_name1="AT2G32350" transcript_name1="AT2G32350.1" organism_name="Athaliana_Araport11" chr_name1="Chr2" gene_chrom_start="13734945" gene_chrom_end="13735788" gene_chrom_strand="1" transcript_id="37375937" transcript_chrom_start="13734945" transcript_chrom_end="13735788" peptide_name="37375937_peptide" exon_chrom_start="13734945;13735345" exon_chrom_end="13735263;13735788" exon_cds_start="13734979;13735345" exon_cds_end="13735263;13735788" 5_utr_start="13734945" 5_utr_end="13734978" 3_utr_start="" 3_utr_end=""
