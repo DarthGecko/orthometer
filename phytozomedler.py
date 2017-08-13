@@ -4,10 +4,10 @@
 #  biomart module.
 # Use help flag for usage statement.
 from bioservices import *
+# from jcvi import biomart
 from math import isnan
+#s = Mart(host="phytozome.jgi.doe.gov" name="phytozome")
 s = BioMart()
-s.host = "phytozome.jgi.doe.gov"
-
 
 ribosomal_kegg_IDs = \
     [
@@ -36,12 +36,15 @@ ribosomal_kegg_IDs = \
 
 filtSelections = {  # Protip: DO NOT put spaces into these strings!
                     'ubiquitin': ['pfam_id_list', 'PF00240'],
-                    'arabidopsis': ['organism_id','447','phytozome'],
+                    'arabidopsis': ['organism_id', '447',' phytozome'],
                     # early release Feb 2017
                     'populus':  ['organism_id', '445,444'],  # poplars
-                    'fiveprime': ['5_utr','excluded="0"'],
+                    'fiveprime': ['5_utr', 'excluded="0"'],
+    # random filter for orthologs
+                    'b_orth': ["ortholog_organism_name", "Bstricta"],
+    # random arabidopsis gene
+                    'atgene': ["gene_name_filter", "AT3G11260"],
                     'ribosome': ['kegg_orth_list', ','.join(ribosomal_kegg_IDs)]
-
                 }
 
 attrSelections = {
@@ -58,17 +61,58 @@ attrSelections = {
                  '3_utr_start', '3_utr_end'],
             'data_positions': [8, 9, float('nan'), 10, 11, 12, 13, 14, 15, 16,
                                17, 18, 0, 1, 2, 3, 4, 5, 6, 7],
-            'formats': ["FASTA"],
+            'formats': ['FASTA'],
         },
-
-    # Add more sets here, will need to make biomart.py better to accept
-    # files besides FASTA
+    'allFeatures':
+        {
+            'data_types':
+                [
+                    'gene_name1', 'transcript_name1', 'organism_name',
+                    'organism_id', 'gene_description', 'chr_name1',
+                    'gene_chrom_strand', 'gene_chrom_start', 'gene_chrom_end',
+                    'transcript_id', 'peptide_name', 'transcript_chrom_start',
+                    'transcript_chrom_end', 'pfam_id', 'pfam_desc', 'smart_id',
+                    'smart_desc', 'panther_id', 'panther_desc', 'pathway_id',
+                    'pathway_desc', 'kog_id', 'kog_desc', 'kegg_enzyme_id',
+                    'kegg_enzyme_desc', 'ko_id', 'keggorth_desc', 'go_id',
+                    'go_desc', 'embl_id', 'entrez_gene_id', 'unigene_id',
+                     'refseq_id', 'sptrembl_id', 'synonyms',
+                ],
+            'formats': ['TSV', 'HTML', 'CSV', 'GFF', 'XLS']
+        },
+    'allStructures':
+        {
+            'data_types':
+                [
+                    'organism_name', 'gene_name', 'chr_name',
+                    'transcript_name', 'gene_description', 'gene_chrom_start',
+                    'gene_chrom_end', 'gene_chrom_strand', 'peptide_name',
+                    'transcript_chrom_start', 'transcript_chrom_end',
+                    'exon_chrom_start', 'exon_chrom_end', 'exon_cds_start',
+                    'exon_cds_end', 'exon_rank', 'exon_phase',
+                ],
+            'formats': ['TSV', 'HTML', 'CSV', 'GFF', 'XLS']
+        },
+    'orthologs':
+        {
+            'data_types':
+                [
+                    'ortholog_group', 'ortholog__dm_gene_name',
+                    'ortholog__dm_organism_name',
+                    'ortholog__dm_ortholog_gene_name',
+                    'ortholog__dm_ortholog_organism_name',
+                    'ortholog__dm_relationship'
+                ],
+            'formats': ['TSV', 'HTML', 'CSV', 'GFF', 'XLS']
+        },
+    # Add more sets here
     # set2:
 }
 
+
 def make_example():
-    ret = s.registry()
-    s.names
+    # ret = s.registry()
+    # s.names
     s.datasets('phytozome_mart')
     s.add_dataset_to_xml('phytozome')
     s.add_filter_to_xml("gene_name_filter", "AT2G37550", "phytozome")
@@ -79,21 +123,26 @@ def make_example():
     return s.get_xml()
 
 
-def test_selections(filts, attrs):
+def test_selections(filts, attrs, form):
     filts = filts.split(',')
     for f in filts:
         if f not in filtSelections.keys():
             raise NameError('filter {} not available'.format(f))
     if attrs not in attrSelections.keys():
         raise NameError('attribute set {} not available'.format(attrs))
+    if form not in attrSelections[attrs]['formats']:
+        raise NameError('{} does not have the {} format available'.format(
+                attrs, form))
     return filts, attrs
 
 
-def make_my_xml(filters, attributes):
-    #s.host = "phytozome.jgi.doe.gov"
+def make_my_xml(filters, attributes, form):
+    s.host = "phytozome.jgi.doe.gov"
     #s.datasets('phytozome_mart')
+
+    s.custom_query(virtualScheme="zome_mart", formatter=form)
     s.add_dataset_to_xml('phytozome')
-    filters, attributes = test_selections(filters, attributes)
+    filters, attributes = test_selections(filters, attributes, form)
     for f in filters:
         print (filtSelections[f])
         s.add_filter_to_xml(*filtSelections[f])
@@ -135,7 +184,7 @@ def replace_headers(fasta, attributeset):
             if not isnan(attrSelections[attributeset]['data_positions'][i]):
                 out_string = '{}{}="{}" '.format(out_string,
                     attrSelections[attributeset]['data_types'][i],
-                    vs[attrSelections[attributeset]['data_types'][i]])
+                    vs[attrSelections[attributeset]['data_positions'][i]])
         return out_string
 
     new_out = re.sub('^>(.+)', format_headers, fasta, flags=re.M)
@@ -148,26 +197,37 @@ def export_results(result, outname):
     o.close()
 
 
-def sample_out(result):
+def sample_out(result, form):
     # The result's data type is usually "unicode"
     print ('Your output looks like:\n')
-    print ("length: " + str(len(result)))
-    res = result.split('\n')
-    for x in res[0:25]:
-        print (x)
+    print ("length: " + str(len(result)) + '\n')
+    if form != 'XLS':
+        res = result.split('\n')
+        for x in res[0:25]:
+            print (x)
+    else:
+        # print(result[0:25]) # this looks bad.
+        print("Phytozomedler does not yet support XLS previews.")
+
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(description="""Get data from phytozome biomart
-    with select xml elements
+    parser = argparse.ArgumentParser(description="""Get data from phytozome 
+    biomart with select xml elements
     \n example code: python phytozomedler arabidopsis,fiveprime
     unsplicedTranscript""")
     parser.add_argument("filterSet",
-        help="Select preloaded filters separated by commas:\n{}".format(filtSelections.keys()))
+        help="Select preloaded filters separated by commas:\n{}".format(
+            filtSelections.keys()))
     parser.add_argument("attributeSet",
-        help="Select preloaded attribute set:\n{}".format(attrSelections.keys()))
-    parser.add_argument("outputf", nargs="?",
-        help="Optional output file name", default="outputf.txt")
+        help="Select preloaded attribute set:\n{}".format(
+            attrSelections.keys()))
+    # format_options = "\n".join('{}') # I was going to find a way to output
+    # the different file formats available.
+    # parser.add_argument("fileFormat", #Do we want this to be optional?
+    #                     help="format for output, e.g. FASTA")
+    parser.add_argument("outputf",
+                        help="output file name with format, e.g. output.FASTA")
     parser.add_argument('--verbose', '-v', action='count',
                         help='Multiple flags increase verbosity')
     parser.add_argument('-test', '-t', action='store_true',
@@ -175,19 +235,22 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # interp input
-    fts, ats = args.filterSet, args.attributeSet
+    fts, ats = args.filterSet, args.attributeSet, # args.fileFormat
+    otp, fmt = args.outputf.split('.')
     if args.verbose > 1:
         print ("selected filters: {}\n".format(fts))
-        print ("selected attributes: {}\n".format(ats))
-    myQuery = make_my_xml(fts, ats)
+        print ("selected attributes: {} with {} format\n".format(ats, fmt))
+    myQuery = make_my_xml(fts, ats, fmt)
     if args.verbose > 2:
         print (myQuery)
     resulting_data = get_results(myQuery)
 
     # output file
-    resulting_data = replace_headers(resulting_data, ats)
+    if fmt == 'FASTA':
+        resulting_data = replace_headers(resulting_data, ats)
+
     if not args.test:
         export_results(resulting_data, args.outputf)
     # see what it looks like
     if args.verbose:
-        sample_out(resulting_data)
+        sample_out(resulting_data, fmt)
