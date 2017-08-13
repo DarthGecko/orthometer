@@ -4,11 +4,9 @@
 So far we have:
 * A way to download data from Phytozome's biomart with Pytho.
 * Some data files to work with.
-
+* Multiple format options
 
 Working on:
-* Making the biomart downloader more versatile for multiple filetypes
+* Giving FASTA headers JSON formats
 * Organizing intron data into file structutes
 * Motif finding algorithms
-
-Worth looking at again: https://github.com/tanghaibao/jcvi/blob/master/apps/biomart.py
