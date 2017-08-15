@@ -1,11 +1,13 @@
 language: python
 python:
   - 2.7
+before_install:
+  - ls
 install:
   - pip install numpy
   - pip install pandas
   - pip install bioservices
   - pip install biopython
-before-spript:
+before_script:
   - ls
 script: python phytozomedler.py arabidopsis,fiveprime unsplicedTranscript mfo.FASTA -t
