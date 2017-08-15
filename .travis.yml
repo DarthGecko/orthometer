@@ -6,5 +6,6 @@ install:
   - pip install pandas
   - pip install bioservices
   - pip install biopython
-
+before-spript:
+  - ls
 script: python phytozomedler.py arabidopsis,fiveprime unsplicedTranscript mfo.FASTA -t
