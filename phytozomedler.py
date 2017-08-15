@@ -4,11 +4,12 @@
 #  biomart module.
 # Use help flag for usage statement.
 from bioservices import *
-# from jcvi import biomart
 from math import isnan
-#s = Mart(host="phytozome.jgi.doe.gov" name="phytozome")
-s = BioMart()
+# For if we want to to jcvi's biomart
+# from jcvi import biomart
+# s = Mart(host="phytozome.jgi.doe.gov" name="phytozome")
 
+s = BioMart()
 ribosomal_kegg_IDs = \
     [
         'K01977', 'K01979', 'K01980', 'K01981', 'K01982', 'K01985', 'K01986',
@@ -35,8 +36,9 @@ ribosomal_kegg_IDs = \
     ]
 
 filtSelections = {  # Protip: DO NOT put spaces into these strings!
+                    'none': [],
                     'ubiquitin': ['pfam_id_list', 'PF00240'],
-                    'arabidopsis': ['organism_id', '447',' phytozome'],
+                    'arabidopsis': ['organism_id', '447'],
                     # early release Feb 2017
                     'populus':  ['organism_id', '445,444'],  # poplars
                     'fiveprime': ['5_utr', 'excluded="0"'],
@@ -76,7 +78,7 @@ attrSelections = {
                     'pathway_desc', 'kog_id', 'kog_desc', 'kegg_enzyme_id',
                     'kegg_enzyme_desc', 'ko_id', 'keggorth_desc', 'go_id',
                     'go_desc', 'embl_id', 'entrez_gene_id', 'unigene_id',
-                     'refseq_id', 'sptrembl_id', 'synonyms',
+                    'refseq_id', 'sptrembl_id', 'synonyms',
                 ],
             'formats': ['TSV', 'HTML', 'CSV', 'GFF', 'XLS']
         },
@@ -110,19 +112,6 @@ attrSelections = {
 }
 
 
-def make_example():
-    # ret = s.registry()
-    # s.names
-    s.datasets('phytozome_mart')
-    s.add_dataset_to_xml('phytozome')
-    s.add_filter_to_xml("gene_name_filter", "AT2G37550", "phytozome")
-    s.add_filter_to_xml('organism_id', '167', 'phytozome')
-    s.add_attribute_to_xml('gene_name1')
-    s.add_attribute_to_xml('transcript_name1')
-    s.add_attribute_to_xml('gene_exon_intron')
-    return s.get_xml()
-
-
 def test_selections(filts, attrs, form):
     filts = filts.split(',')
     for f in filts:
@@ -138,38 +127,30 @@ def test_selections(filts, attrs, form):
 
 def make_my_xml(filters, attributes, form):
     s.host = "phytozome.jgi.doe.gov"
-    #s.datasets('phytozome_mart')
-
     s.custom_query(virtualScheme="zome_mart", formatter=form)
     s.add_dataset_to_xml('phytozome')
     filters, attributes = test_selections(filters, attributes, form)
     for f in filters:
         print (filtSelections[f])
-        s.add_filter_to_xml(*filtSelections[f])
-
+        if f != 'none':
+            s.add_filter_to_xml(*filtSelections[f])
     for a in attrSelections[attributes]['data_types']:
         s.add_attribute_to_xml(a)
-
     return s.get_xml()
 
 
-# <Dataset name = "phytozome" interface = "default" >
-# 		<Filter name = "gene_name_filter" value = "AT2G37550"/>
-# 		<Filter name = "organism_id" value = "167"/>
-# 		<Attribute name = "gene_name1" />
-# 		<Attribute name = "transcript_name1" />
-# 		<Attribute name = "transcript_exon_intron" />
-def read_my_file(myfile):
-    f = open(myfile)
+def read_my_xml(my_file):
+    f = open(my_file)
     xml_query = f.read()
+    f.close()
     return xml_query
 
 
-def get_results(qury):
+def get_results(query):
     # if qury.endswith('.xml')
-    # make this function also compatible with directly taking in xml file name
+    # make this function also compatible with directly taking in xml file name?
     print ("Querying " + s.host + "\n")
-    res = s.query(qury)
+    res = s.query(query)
     return res
 
 
@@ -177,7 +158,7 @@ def replace_headers(fasta, attributeset):
     import re
 
     def format_headers(matchobj):
-        vs = matchobj.group(1).split('|') #values
+        vs = matchobj.group(1).split('|')  # values
         out_string = '>'
         # put all of the header data into xml style tags
         for i in range(0, len(attrSelections[attributeset]['data_positions'])):
@@ -206,7 +187,7 @@ def sample_out(result, form):
         for x in res[0:25]:
             print (x)
     else:
-        # print(result[0:25]) # this looks bad.
+        # Maybe add this feature later
         print("Phytozomedler does not yet support XLS previews.")
 
 
@@ -215,18 +196,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""Get data from phytozome 
     biomart with select xml elements
     \n example code: python phytozomedler arabidopsis,fiveprime
-    unsplicedTranscript""")
+    unsplicedTranscript mfo.FASTA""")
     parser.add_argument("filterSet",
         help="Select preloaded filters separated by commas:\n{}".format(
             filtSelections.keys()))
     parser.add_argument("attributeSet",
         help="Select preloaded attribute set:\n{}".format(
             attrSelections.keys()))
-    # format_options = "\n".join('{}') # I was going to find a way to output
-    # the different file formats available.
-    # parser.add_argument("fileFormat", #Do we want this to be optional?
-    #                     help="format for output, e.g. FASTA")
-    parser.add_argument("outputf",
+    parser.add_argument("outputf",  # handle both output file name and format
                         help="output file name with format, e.g. output.FASTA")
     parser.add_argument('--verbose', '-v', action='count',
                         help='Multiple flags increase verbosity')
@@ -235,8 +212,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # interp input
-    fts, ats = args.filterSet, args.attributeSet, # args.fileFormat
-    otp, fmt = args.outputf.split('.')
+    fts, ats = args.filterSet, args.attributeSet
+    fmt = args.outputf.split('.')[1]
     if args.verbose > 1:
         print ("selected filters: {}\n".format(fts))
         print ("selected attributes: {} with {} format\n".format(ats, fmt))
