@@ -7,4 +7,4 @@ install:
   - pip install bioservices
   - pip install biopython
 
-script: python phytozomedler arabidopsis,fiveprime unsplicedTranscript mfo.FASTA -t
+script: python phytozomedler.py arabidopsis,fiveprime unsplicedTranscript mfo.FASTA -t
