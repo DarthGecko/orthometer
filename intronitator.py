@@ -28,6 +28,7 @@ However, you can supply a title2ids function to alter this:
     ...         print(record.id)
 '''
 
+
 def get_exon_id(header):  # Gives each record.name the exon coords septed by |
     return (re.match('.+name1="([^"]+)"', header).group(1),
             '|'.join(re.findall('exon_chrom_[star|end]+="([\d;]+)"', header)),

@@ -1,2 +1,10 @@
 language: python
-install: numpy, pandas
+python:
+  - 2.7
+install:
+  - pip install numpy
+  - pip install pandas
+  - pip install bioservices
+  - pip install biopython
+
+script: python phytozomedler arabidopsis,fiveprime unsplicedTranscript mfo.FASTA -t
