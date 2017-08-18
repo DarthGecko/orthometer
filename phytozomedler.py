@@ -126,7 +126,7 @@ def test_selections(filts, attrs, form):
 
 
 def make_my_xml(filters, attributes, form):
-    s.host = "phytozome.jgi.doe.gov"
+    s._set_host("phytozome.jgi.doe.gov",True)
     s.custom_query(virtualScheme="zome_mart", formatter=form)
     s.add_dataset_to_xml('phytozome')
     filters, attributes = test_selections(filters, attributes, form)

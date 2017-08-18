@@ -29,6 +29,19 @@ However, you can supply a title2ids function to alter this:
 '''
 
 
+def analyze_intron(intron_seq):
+    from Bio.SeqUtils import GC
+    gc = GC(intron_seq)
+    ambiguous = ('W' or 'S' or 'M' or 'K' or 'R' or 'Y' or 'B' or 'D' or 'H' or 'V'
+             or 'N' or '-') in intron_seq.upper()
+    if ambiguous:
+        ambig = 'ambig'
+    else:
+        ambig = 'unamb'
+    len(intron_seq)
+    return [gc, ambig, ]
+
+
 def get_exon_id(header):  # Gives each record.name the exon coords septed by |
     return (re.match('.+name1="([^"]+)"', header).group(1),
             '|'.join(re.findall('exon_chrom_[star|end]+="([\d;]+)"', header)),
@@ -38,7 +51,7 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
 def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coordinates)
     with open(fasta) as handle:
         intron_file = '{}_introns.FASTA'.format(fasta)
-        open(intron_file, 'w')
+        o = open(intron_file, 'w')
         example = 0
         for seq_record in SeqIO.FastaIO.FastaIterator(handle,
                                                       title2ids=get_exon_id):
@@ -49,8 +62,8 @@ def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coo
             r = seq_record.name.split('|')
             for i in range(2):
                 exon_positions[pos[i]] = [int(x) for x in r[i].split(';')]
-            strand = re.match('.+gene_chrom_strand="([^"]+)"',
-                              seq_record.description).group(1)
+            strand = int(re.match('.+gene_chrom_strand="([^"]+)"',
+                                  seq_record.description).group(1))
             print ('strand: ', strand)
             start = int(re.match('.+transcript_chrom_start="([^"]+)"',
                                  seq_record.description).group(1))
@@ -65,7 +78,7 @@ def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coo
             intron_positions = {'beg': [], 'end': []}
             print ('Introns: ')
             for i in range(1, intron_count+1):  # Strand represented by 1 or -1
-                # if strand == "1":
+                # if strand > 0:
                     intron_positions['beg'].append(exon_positions['end'][i-1]+1)
                     intron_positions['end'].append(exon_positions['beg'][i] - 1)
                 # else:
@@ -82,7 +95,7 @@ def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coo
 
             for i in range(0, intron_count):
                 # intron = ''
-                if strand == '1':
+                if strand > 0:
                     intron = seq_record.seq[intron_positions['beg'][i] -
                                             start:intron_positions['end'][i] -
                                             start]
@@ -99,7 +112,25 @@ def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coo
                 print ('The introns are ')
                 for x in introns:
                     print (str(x))
-            example = example + 1
+            # Gather further info for output
+            if strand > 0:
+                strand_sym = '+'
+            else:
+                strand_sym = '-'
+            strand = re.match('.+gene_chrom_strand="([^"]+)"',
+                              seq_record.description).group(1)
+            chrom = re.match('.+chr_name1="([^"]+)"',
+                              seq_record.description).group(1)
+            data = [chrom, strand_sym]
+
+            # Output
+            s = 1
+            for x in introns:
+                line = '{}\t{}/{}\t'.format(seq_record.id, s, intron_count) +\
+                       '\t'.join(str(d) for d in analyze_intron(x))+'\t'+x
+                o.write(line)
+                s += 1
+            example += 1
             if example > 4 and test:
                 break
 
