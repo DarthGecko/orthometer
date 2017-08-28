@@ -31,7 +31,7 @@ However, you can supply a title2ids function to alter this:
 
 def analyze_intron(intron_seq):
     from Bio.SeqUtils import GC
-    gc = GC(intron_seq)
+    gc = '{0:.2f}'.format(GC(intron_seq))
     ambiguous = ('W' or 'S' or 'M' or 'K' or 'R' or 'Y' or 'B' or 'D' or 'H' or 'V'
              or 'N' or '-') in intron_seq.upper()
     if ambiguous:
@@ -43,15 +43,16 @@ def analyze_intron(intron_seq):
 
 
 def get_exon_id(header):  # Gives each record.name the exon coords septed by |
-    return (re.match('.+name1="([^"]+)"', header).group(1),
+    return (re.match('.+transcript_name1="([^"]+)"', header).group(1),
             '|'.join(re.findall('exon_chrom_[star|end]+="([\d;]+)"', header)),
             header)
 
 
 def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coordinates)
     with open(fasta) as handle:
-        intron_file = '{}_introns.FASTA'.format(fasta)
+        intron_file = '{}_introns.FASTA'.format(fasta[:-6])
         o = open(intron_file, 'w')
+        o.write('# id chr beg end str n/m len gc ambig? seq\n')
         example = 0
         for seq_record in SeqIO.FastaIO.FastaIterator(handle,
                                                       title2ids=get_exon_id):
@@ -109,26 +110,34 @@ def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coo
                     intron = intron.reverse_complement()
                 introns.append(intron)
             if verb:
-                print ('The introns are ')
+                print ('The introns of {} are '.format(seq_record.id))
                 for x in introns:
                     print (str(x))
             # Gather further info for output
+
+            strand = int(re.match('.+gene_chrom_strand="([^"]+)"',
+                              seq_record.description).group(1))
             if strand > 0:
                 strand_sym = '+'
             else:
                 strand_sym = '-'
-            strand = re.match('.+gene_chrom_strand="([^"]+)"',
-                              seq_record.description).group(1)
             chrom = re.match('.+chr_name1="([^"]+)"',
                               seq_record.description).group(1)
             data = [chrom, strand_sym]
 
             # Output
             s = 1
+
             for x in introns:
-                line = '{}\t{}/{}\t'.format(seq_record.id, s, intron_count) +\
-                       '\t'.join(str(d) for d in analyze_intron(x))+'\t'+x
-                o.write(line)
+                beg = intron_positions['beg'][s-1]
+                end = intron_positions['end'][s-1]
+                l = abs(end - beg)
+                line = '{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t'.format(seq_record.id,
+                                                            data[0], beg, end,
+                                                            strand_sym, s,
+                                                            intron_count, l) +\
+                       '\t'.join(str(d) for d in analyze_intron(x))+'\t'+str(x)
+                o.write(line+'\n')
                 s += 1
             example += 1
             if example > 4 and test:
