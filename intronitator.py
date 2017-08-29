@@ -48,7 +48,7 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
             header)
 
 
-def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coordinates)
+def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):  #want the chrom (refers to coordinates)
     with open(fasta) as handle:
         intron_file = '{}_introns.FASTA'.format(fasta[:-6])
         o = open(intron_file, 'w')
@@ -72,6 +72,9 @@ def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coo
             print ('Exons:')
 
             intron_count = len(exon_positions['beg']) - 1  # Is this right?
+            if intron_count < min_introns or intron_count > max_introns:
+                continue
+
             for i in range(0, intron_count+1):
                 print ('{} - b: {} e: {}'.format(i+1, exon_positions['beg'][i],
                                                  exon_positions['end'][i]))
@@ -132,17 +135,15 @@ def strip_introns(fasta, verb=None, test=False):  #want the chrom (refers to coo
                 beg = intron_positions['beg'][s-1]
                 end = intron_positions['end'][s-1]
                 l = abs(end - beg)
-                line = '{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t'.format(seq_record.id,
-                                                            data[0], beg, end,
-                                                            strand_sym, s,
-                                                            intron_count, l) +\
+                order = (seq_record.id, data[0], beg, end, strand_sym, s,
+                         intron_count, l)
+                line = '{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t'.format(*order) +\
                        '\t'.join(str(d) for d in analyze_intron(x))+'\t'+str(x)
                 o.write(line+'\n')
                 s += 1
             example += 1
             if example > 4 and test:
                 break
-
 
 
 if __name__ == "__main__":
