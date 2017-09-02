@@ -4,9 +4,10 @@
 from Bio import SeqIO
 import re
 from Bio import SeqIO
-from Bio import Seq
+from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
-
+don_len = 5
+acc_len = 8
 
 # Things to work out:
 # How are we storing the data on the introns? In RAM or ROM?
@@ -42,6 +43,26 @@ def analyze_intron(intron_seq):
     return [gc, ambig, ]
 
 
+def score_site(seq, model):
+    # from Bio import motifs
+    # from Bio.Seq import Seq
+    import Bio
+    import sys
+    assert isinstance(model, Bio.motifs.Motif)
+    assert isinstance(seq, Bio.Seq.Seq)
+    pssm = model.counts.normalize(pseudocounts=0.5).log_odds()
+    print(sys.getsizeof(pssm))
+    print(sys.getsizeof(pssm.calculate(seq)))
+    # p = 1
+    # for i in range(0, len(seq)):
+    #     nt = seq[i]
+    #     print(model.counts[nt, i])
+    #     p *= model.counts[nt, i]
+    # '{0:.2f} compared to {}'.format(log(p / 0.25 ** len(seq)),
+      #                              pssm.calculate(seq))
+    return pssm.calculate(seq)
+
+
 def get_exon_id(header):  # Gives each record.name the exon coords septed by |
     return (re.match('.+transcript_name1="([^"]+)"', header).group(1),
             '|'.join(re.findall('exon_chrom_[star|end]+="([\d;]+)"', header)),
@@ -49,11 +70,15 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
 
 
 def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):  #want the chrom (refers to coordinates)
+    intron_file = '{}_introns.FASTA'.format(fasta[:-6])
     with open(fasta) as handle:
-        intron_file = '{}_introns.FASTA'.format(fasta[:-6])
         o = open(intron_file, 'w')
         o.write('# id chr beg end str n/m len gc ambig? seq\n')
         example = 0
+
+
+        don = []
+        acc = []
         for seq_record in SeqIO.FastaIO.FastaIterator(handle,
                                                       title2ids=get_exon_id):
             if verb:
@@ -65,22 +90,25 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
                 exon_positions[pos[i]] = [int(x) for x in r[i].split(';')]
             strand = int(re.match('.+gene_chrom_strand="([^"]+)"',
                                   seq_record.description).group(1))
-            print ('strand: ', strand)
+            if verb:
+                print ('strand: ', strand)
             start = int(re.match('.+transcript_chrom_start="([^"]+)"',
                                  seq_record.description).group(1))
             # intron fasta file?
-            print ('Exons:')
+            if verb:
+                print ('Exons:')
 
             intron_count = len(exon_positions['beg']) - 1  # Is this right?
             if intron_count < min_introns or intron_count > max_introns:
                 continue
-
-            for i in range(0, intron_count+1):
-                print ('{} - b: {} e: {}'.format(i+1, exon_positions['beg'][i],
-                                                 exon_positions['end'][i]))
-            # print ('There should be {} introns.'.format(intron_count))
+            if verb:
+                for i in range(0, intron_count+1):
+                    print ('{} - b: {} e: {}'.format(i+1, exon_positions['beg'][i],
+                                                     exon_positions['end'][i]))
+                # print ('There should be {} introns.'.format(intron_count))
             intron_positions = {'beg': [], 'end': []}
-            print ('Introns: ')
+            if verb:
+                print ('Introns: ')
             for i in range(1, intron_count+1):  # Strand represented by 1 or -1
                 # if strand > 0:
                     intron_positions['beg'].append(exon_positions['end'][i-1]+1)
@@ -88,9 +116,10 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
                 # else:
                 #     intron_positions['beg'].append(exon_positions['end'][i] + 1)
                 #     intron_positions['end'].append(exon_positions['beg'][i-1]-1)
-            for i in range(0, intron_count):
-                print ('{} - b: {} e: {}'.format(i+1, intron_positions['beg'][i],
-                                                 intron_positions['end'][i]))
+            if verb:
+                for i in range(0, intron_count):
+                    print ('{} - b: {} e: {}'.format(i+1, intron_positions['beg'][i],
+                                                     intron_positions['end'][i]))
 
             # return intron_positions # Is this all I want? Won't work with
             #   per transcript loop
@@ -119,19 +148,23 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
             # Gather further info for output
 
             strand = int(re.match('.+gene_chrom_strand="([^"]+)"',
-                              seq_record.description).group(1))
+                                  seq_record.description).group(1))
             if strand > 0:
                 strand_sym = '+'
             else:
                 strand_sym = '-'
             chrom = re.match('.+chr_name1="([^"]+)"',
-                              seq_record.description).group(1)
+                             seq_record.description).group(1)
             data = [chrom, strand_sym]
 
             # Output
             s = 1
 
             for x in introns:
+                #  Setting up donor and acceptor tables
+                don.append(x[:don_len])
+                acc.append(x[-acc_len:])
+
                 beg = intron_positions['beg'][s-1]
                 end = intron_positions['end'][s-1]
                 l = abs(end - beg)
@@ -144,6 +177,23 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
             example += 1
             if example > 4 and test:
                 break
+    don_instances = don # [Seq(x) for x in don]
+    acc_instances = acc # [Seq(x) for x in acc]
+    from Bio import motifs
+    don_motif = motifs.create(don_instances)
+    acc_motif = motifs.create(acc_instances)
+    print (don_motif.alphabet)
+    with open(intron_file, 'r+') as handle:
+        lines = handle.readlines()
+        handle.seek(1)
+        # handle.truncate
+        for line in lines:
+
+            intron = line.split()[-1]
+            d = score_site(Seq(intron[:don_len], don_motif.alphabet), don_motif)
+            a = score_site(Seq(intron[-acc_len:], acc_motif.alphabet), acc_motif)
+            order = ('\t'.join(line.split()[:-1]), d, a, intron)
+            handle.write('{}\t{0:.2f}\t{0:.2f}\t{}'.format(*order))
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 language: python
 python:
-  - 2.7
+  - 3.6.1
 before_install:
   - ls
 install:
   - pip install numpy
   - pip install pandas
-  - pip install bioservices
+  - pip install -e git+https://github.com/DarthGecko/bioservices
   - pip install biopython
 before_script:
   - ls
