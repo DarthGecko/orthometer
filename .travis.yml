@@ -10,4 +10,4 @@ install:
   - pip install biopython
 before_script:
   - ls
-script: python phytozomedler.py arabidopsis,fiveprime unsplicedTranscript mfo.FASTA -t
+script: python phytozomedler.py populus,fiveprime unsplicedTranscript mfo.FASTA

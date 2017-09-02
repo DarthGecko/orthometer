@@ -1,6 +1,8 @@
 # orthometer at korflab
 **The project for getting orthologous introns and analyzing them for motifs**
 
+[![Build Status](https://travis-ci.org/DarthGecko/orthometer.svg?branch=master)](https://travis-ci.org/DarthGecko/orthometer)
+
 So far we have:
 * A way to download data from Phytozome's biomart with Python.
 * Some data files to work with.
