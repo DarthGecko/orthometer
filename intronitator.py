@@ -203,7 +203,7 @@ if __name__ == "__main__":
         help="fasta file input")
     parser.add_argument("outputf", nargs="?",
         help="Optional output file name", default="outputf.FASTA")
-    parser.add_argument('--verbose', '-v', action='count',
+    parser.add_argument('--verbose', '-v', action='count', default=0,
                         help='Multiple flags increase verbosity')
     parser.add_argument('-test', '-t', action='store_true',
                         help='Do not store the data')

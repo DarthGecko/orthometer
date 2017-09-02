@@ -199,13 +199,13 @@ if __name__ == "__main__":
     unsplicedTranscript mfo.FASTA""")
     parser.add_argument("filterSet",
         help="Select preloaded filters separated by commas:\n{}".format(
-            filtSelections.keys()))
+            ', '.join(filtSelections)))
     parser.add_argument("attributeSet",
         help="Select preloaded attribute set:\n{}".format(
-            attrSelections.keys()))
+            ', '.join(attrSelections)))
     parser.add_argument("outputf",  # handle both output file name and format
                         help="output file name with format, e.g. output.FASTA")
-    parser.add_argument('--verbose', '-v', action='count',
+    parser.add_argument('--verbose', '-v', default=0, action='count',
                         help='Multiple flags increase verbosity')
     parser.add_argument('-test', '-t', action='store_true',
                         help='Do not store the data')
