@@ -6,7 +6,7 @@ before_install:
 install:
   - pip install numpy
   - pip install pandas
-  - pip install -e git+https://github.com/DarthGecko/bioservices/master
+  - pip install bioservices
   - pip install biopython
 before_script:
   - ls
