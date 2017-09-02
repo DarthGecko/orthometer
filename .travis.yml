@@ -6,7 +6,7 @@ before_install:
 install:
   - pip install numpy
   - pip install pandas
-  - pip install bioservices
+  - pip install -e git+https://https://github.com/cokelaer/bioservices#egg=master
   - pip install biopython
 before_script:
   - ls
