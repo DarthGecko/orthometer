@@ -51,8 +51,8 @@ def score_site(seq, model):
     assert isinstance(model, Bio.motifs.Motif)
     assert isinstance(seq, Bio.Seq.Seq)
     pssm = model.counts.normalize(pseudocounts=0.5).log_odds()
-    print(sys.getsizeof(pssm))
-    print(sys.getsizeof(pssm.calculate(seq)))
+    # print(sys.getsizeof(pssm))
+    # print(sys.getsizeof(pssm.calculate(seq)))
     # p = 1
     # for i in range(0, len(seq)):
     #     nt = seq[i]
@@ -60,7 +60,9 @@ def score_site(seq, model):
     #     p *= model.counts[nt, i]
     # '{0:.2f} compared to {}'.format(log(p / 0.25 ** len(seq)),
       #                              pssm.calculate(seq))
-    return pssm.calculate(seq)
+    # return pssm.calculate(seq)
+    from random import randrange
+    return randrange(2)
 
 
 def get_exon_id(header):  # Gives each record.name the exon coords septed by |
@@ -71,9 +73,10 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
 
 def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):  #want the chrom (refers to coordinates)
     intron_file = '{}_introns.FASTA'.format(fasta[:-6])
+    headline = '# id chr beg end str n/m len gc ambig? don acc seq\n'
     with open(fasta) as handle:
         o = open(intron_file, 'w')
-        o.write('# id chr beg end str n/m len gc ambig? seq\n')
+        o.write(headline)
         example = 0
 
 
@@ -82,7 +85,7 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
         for seq_record in SeqIO.FastaIO.FastaIterator(handle,
                                                       title2ids=get_exon_id):
             if verb:
-                print (seq_record.name)
+                print ("Seq Record: " + seq_record.name)
             exon_positions = {}
             pos = ['beg', 'end']
             r = seq_record.name.split('|')
@@ -185,15 +188,15 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
     print (don_motif.alphabet)
     with open(intron_file, 'r+') as handle:
         lines = handle.readlines()
-        handle.seek(1)
+        handle.seek(len(headline))
         # handle.truncate
-        for line in lines:
+        for line in lines[1:]:
 
             intron = line.split()[-1]
             d = score_site(Seq(intron[:don_len], don_motif.alphabet), don_motif)
             a = score_site(Seq(intron[-acc_len:], acc_motif.alphabet), acc_motif)
             order = ('\t'.join(line.split()[:-1]), d, a, intron)
-            handle.write('{}\t{0:.2f}\t{0:.2f}\t{}'.format(*order))
+            handle.write('{}\t{}\t{}\t{}\n'.format(*order))
 
 
 if __name__ == "__main__":
