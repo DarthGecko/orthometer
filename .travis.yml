@@ -8,6 +8,8 @@ install:
   - pip install pandas
   - pip install -e git+https://github.com/cokelaer/bioservices#egg=master
   - pip install biopython
-before_script:
-  - ls
-script: python phytozomedler.py populus,fiveprime unsplicedTranscript mfo.FASTA
+
+script:
+  - python phytozomedler.py populus,fiveprime unsplicedTranscript mfo.FASTA
+  - python intronitator.py mfo.FASTA -v
+after_script: ls
