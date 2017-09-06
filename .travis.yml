@@ -14,4 +14,4 @@ script:
   - python intronitator.py mfo.FASTA
 after_script:
   - ls
-  - nano mfo_introns.FASTA
+  - less mfo_introns.FASTA
