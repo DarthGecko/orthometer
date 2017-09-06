@@ -74,6 +74,7 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
 def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):  #want the chrom (refers to coordinates)
     intron_file = '{}_introns.FASTA'.format(fasta[:-6])
     headline = '# id chr beg end str n/m len gc ambig? don acc seq\n'
+    enough_introns = False
     with open(fasta) as handle:
         o = open(intron_file, 'w')
         o.write(headline)
@@ -100,15 +101,21 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
             # intron fasta file?
             if verb:
                 print ('Exons:')
-
-            intron_count = len(exon_positions['beg']) - 1  # Is this right?
-            if intron_count < min_introns or intron_count > max_introns:
-                continue
             if verb:
-                for i in range(0, intron_count+1):
-                    print ('{} - b: {} e: {}'.format(i+1, exon_positions['beg'][i],
-                                                     exon_positions['end'][i]))
-                # print ('There should be {} introns.'.format(intron_count))
+                for i in range(0, intron_count + 1):
+                    print (
+                    '{} - b: {} e: {}'.format(i + 1, exon_positions['beg'][i],
+                                              exon_positions['end'][i]))
+                    # print ('There should be {} introns.'.format(intron_count))
+            intron_count = len(exon_positions['beg']) - 1  # Is this right?
+
+            if intron_count < min_introns or intron_count > max_introns:
+                if verb:
+                    print ('Unacceptable number of introns found\n')
+                continue
+            else:
+                enough_introns = True
+
             intron_positions = {'beg': [], 'end': []}
             if verb:
                 print ('Introns: ')
@@ -180,12 +187,14 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
             example += 1
             if example > 4 and test:
                 break
-    don_instances = don # [Seq(x) for x in don]
-    acc_instances = acc # [Seq(x) for x in acc]
-    from Bio import motifs
-    don_motif = motifs.create(don_instances)
-    acc_motif = motifs.create(acc_instances)
-    print (don_motif.alphabet)
+    # delete output file if not enough_introns?
+    if intron_count > min_introns:
+        don_instances = don # [Seq(x) for x in don]
+        acc_instances = acc # [Seq(x) for x in acc]
+        from Bio import motifs
+        don_motif = motifs.create(don_instances)
+        acc_motif = motifs.create(acc_instances)
+        print (don_motif.alphabet)
     with open(intron_file, 'r+') as handle:
         lines = handle.readlines()
         handle.seek(len(headline))
@@ -193,8 +202,12 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
         for line in lines[1:]:
 
             intron = line.split()[-1]
-            d = score_site(Seq(intron[:don_len], don_motif.alphabet), don_motif)
-            a = score_site(Seq(intron[-acc_len:], acc_motif.alphabet), acc_motif)
+            if intron_count > min_introns:
+                d = score_site(Seq(intron[:don_len], don_motif.alphabet), don_motif)
+                a = score_site(Seq(intron[-acc_len:], acc_motif.alphabet), acc_motif)
+            else:
+                d = 'NA'
+                a = 'NA'
             order = ('\t'.join(line.split()[:-1]), d, a, intron)
             handle.write('{}\t{}\t{}\t{}\n'.format(*order))
 

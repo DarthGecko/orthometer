@@ -10,7 +10,7 @@ install:
   - pip install biopython
 
 script:
-  - python phytozomedler.py atgene,arabidopsis unsplicedTranscript mfo.FASTA
+  - python phytozomedler.py ribosome,arabidopsis unsplicedTranscript mfo.FASTA
   - python intronitator.py mfo.FASTA
 after_script:
   - ls
