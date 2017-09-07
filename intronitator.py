@@ -20,17 +20,6 @@ acc_len = 8
 
 # Negative strands??!
 
-'''
-However, you can supply a title2ids function to alter this:
-
-    >>> def take_upper(title):
-    ...     return title.split(None, 1)[0].upper(), "", title
-    >>> with open("Fasta/dups.fasta") as handle:
-    ...     for record in FastaIterator(handle, title2ids=take_upper):
-    ...         print(record.id)
-'''
-
-
 def analyze_intron(intron_seq):
     from Bio.SeqUtils import GC
     gc = '{0:.2f}'.format(GC(intron_seq))
@@ -44,8 +33,7 @@ def analyze_intron(intron_seq):
     return [gc, ambig, ]
 
 def score_site(seq, model):
-    from Bio import motifs
-    # from Bio.Seq import Seq
+
     assert isinstance(model, motifs.Motif)
     assert isinstance(seq, Seq)
     pssm = model.counts.normalize(pseudocounts=0.5).log_odds()
@@ -59,7 +47,33 @@ def score_site(seq, model):
     return '{0:.2f}'.format(pssm.calculate(seq))
 
 
-def score_site2(seq, model):
+def dinucs(seq):
+    seq = str(seq)
+    if len(seq) < (don_len + acc_len + 2):
+        return []
+    else:
+        return [seq[i:(i + 2)] for i in range(don_len, len(seq) - acc_len - 2)]
+
+
+def score_dinucleotides(seq, model):
+    # sub score_2mer
+    # {
+    #     my($seq, $model) = @_;
+    #     my $score = 0;
+    #     for (my $i = 0; $i < length($seq) -1; $i++) {
+    #         my $di = substr($seq, $i, 2);
+    #         $score += log($model->{$di} / 0.0625);  # ha, because I'm lazy
+    #     }
+    #     return sprintf "%.1f", 100 * $score;
+    # }
+    from math import log
+    score = 0
+    for di in dinucs(seq):
+        score += log(model[di] / 0.0625)
+    return '{0:.2f}'.format(score * 100)
+
+
+def pseudo_score_site2(seq, model):
     from random import randrange
     return randrange(2)
 
@@ -70,14 +84,17 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
             header)
 
 
-def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
-                  multi_species=False):  #want the chrom (refers to coordinates)
-    intron_file = '{}_introns1.FASTA'.format(fasta[:-6])
+def strip_introns(fasta, verb=None, test=False, min_intron_len=5,
+                  max_intron_len=10000, multi_species=False):
+    # want the chrom (refers to coordinates)
+    intron_file = '{}_introns_1.FASTA'.format(fasta[:-6])
     headline = '# id chr beg end str n/m len gc ambig? seq\n'
     enough_introns = False
 
     don_motif = {}
     acc_motif = {}
+    dinuc_motif = {}
+    dinuc_dist = {}
     with open(fasta) as handle:
         o = open(intron_file, 'w')
         o.write(headline)
@@ -86,6 +103,7 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
 
         don = {}
         acc = {}
+        dinuc = {}
         for seq_record in SeqIO.FastaIO.FastaIterator(handle,
                                                       title2ids=get_exon_id):
             if verb:
@@ -103,7 +121,6 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
                 print ('strand: ', strand)
             start = int(re.match('.+transcript_chrom_start="([^"]+)"',
                                  seq_record.description).group(1))
-            # intron fasta file?
 
             intron_count = len(exon_positions['beg']) - 1  # Is this right?
             if verb:
@@ -113,13 +130,6 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
                     '{} - b: {} e: {}'.format(i + 1, exon_positions['beg'][i],
                                               exon_positions['end'][i]))
                     # print ('There should be {} introns.'.format(intron_count))
-
-            if intron_count < min_introns or intron_count > max_introns:
-                if verb:
-                    print ('Unacceptable number of introns found\n')
-                continue
-            else:
-                enough_introns = True
 
             intron_positions = {'beg': [], 'end': []}
             if verb:
@@ -176,51 +186,70 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
             if species not in don:
                 don[species] = []
                 acc[species] = []
+                dinuc[species] = []
             for x in introns:
-                #  Setting up donor and acceptor tables
-                don[species].append(x[:don_len])
-                acc[species].append(x[-acc_len:])
+                # If intron is not anomalous...
+                if not (len(x) > max_intron_len or len(x) < min_intron_len):
+                    #  Setting up donor and acceptor tables
+                    don[species].append(x[:(don_len-1)])
+                    acc[species].append(x[-acc_len:])
+                    dinuc[species].extend(dinucs(x))
 
                 beg = intron_positions['beg'][s-1]
                 end = intron_positions['end'][s-1]
                 l = abs(end - beg)
-                order = (seq_record.id, species, chrom, beg, end, strand_sym, s,
-                         intron_count, l)
-                line = '{}\t{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t'.format(*order) +\
-                       '\t'.join(str(d) for d in analyze_intron(x))+'\t'+str(x)
-                o.write(line+'\n')
+                intron_set = '{}/{}'.format(s, intron_count)
+                order = [seq_record.id, species, chrom, str(beg), str(end),
+                         strand_sym, intron_set, str(l)]
+                order.extend(analyze_intron(x))
+                order.append(str(x))
+                o.write('\t'.join(order)+'\n')
                 s += 1
             example += 1
             if example > 4 and test:
                 break
     # delete output file if not enough_introns?
-            don_motif[species] = motifs.create(don[species])
-            acc_motif[species] = motifs.create(acc[species])
     o.close()
 
+    for species in don:
+        don_motif[species] = motifs.create(don[species])
+        acc_motif[species] = motifs.create(acc[species])
+        dinuc_motif[species] = motifs.create(dinuc[species])
+        dinuc_dist[species] = {}
+        for di in dinuc[species]:
+            try:
+                dinuc_dist[species][di] += 1
+            except KeyError:
+                dinuc_dist[species][di] = 1
+
     with open(intron_file) as out1:
-        intron_file_2 = '{}_introns.FASTA'.format(fasta[:-6])
+        intron_file_2 = '{}_introns_2.FASTA'.format(fasta[:-6])
         out2 = open(intron_file_2, 'w')
         headline = '# id chr beg end str n/m len gc ambig? don acc seq\n'
         out2.write(headline)
         lines = out1.readlines()
-        # handle.truncate
+        good_ones = 0
         for line in lines[1:]:
             intron = line.split()[-1]
+            if len(intron) > max_intron_len or len(intron) < min_intron_len:
+                continue
             species = line.split()[1]
-            d = score_site(Seq(intron[:don_len],
+            good_ones += 1
+            d = score_site(Seq(intron[:(don_len-1)],
                                don_motif[species].alphabet),
                            don_motif[species])
             a = score_site(Seq(intron[-acc_len:],
                                acc_motif[species].alphabet),
                            acc_motif[species])
-            order = ('\t'.join(line.split()[:-1]), d, a, intron)
-            out2.write('{}\t{}\t{}\t{}\n'.format(*order))
+            di_score = score_dinucleotides(intron, dinuc_dist[species])
+            order = ('\t'.join(line.split()[:-1]), d, a, di_score, intron)
+            out2.write('\t'.join(order)+'\n')
         out2.close()
         if len(lines) == 0:
             print ('Requires Python 3 for additional processing')
         else:
-            print ('Processed {} introns'.format(len(lines)-1))
+            print ('Processed {} good introns out of {}'.format(good_ones,
+                                                                len(lines) - 1))
 
 
 if __name__ == "__main__":
