@@ -7,11 +7,12 @@ So far we have:
 * A way to download data from Phytozome's biomart with Python.
 * Some data files to work with.
 * Multiple format options
+* Intron file production with introniator.py which scores acceptor and donor sites.
 
 Working on:
 * Giving FASTA headers JSON formats
-* Organizing intron data into file structutes
+* Scoring 2mers of introns
 * Motif finding algorithms
 * Build up species list through queries
-* make a separate yml file of filters and attributes for each biomart host or database.
+* Make a separate yml file of filters and attributes for each biomart host or database.
 

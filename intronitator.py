@@ -5,6 +5,7 @@ from Bio import SeqIO
 import re
 from Bio import SeqIO
 from Bio.Seq import Seq
+from Bio import motifs
 from Bio.Alphabet import IUPAC
 don_len = 5
 acc_len = 8
@@ -42,25 +43,23 @@ def analyze_intron(intron_seq):
     len(intron_seq)
     return [gc, ambig, ]
 
-
 def score_site(seq, model):
-    # from Bio import motifs
+    from Bio import motifs
     # from Bio.Seq import Seq
-    import Bio
-    import sys
-    assert isinstance(model, Bio.motifs.Motif)
-    assert isinstance(seq, Bio.Seq.Seq)
+    assert isinstance(model, motifs.Motif)
+    assert isinstance(seq, Seq)
     pssm = model.counts.normalize(pseudocounts=0.5).log_odds()
-    # print(sys.getsizeof(pssm))
-    # print(sys.getsizeof(pssm.calculate(seq)))
     # p = 1
     # for i in range(0, len(seq)):
     #     nt = seq[i]
     #     print(model.counts[nt, i])
     #     p *= model.counts[nt, i]
     # '{0:.2f} compared to {}'.format(log(p / 0.25 ** len(seq)),
-      #                              pssm.calculate(seq))
-    # return pssm.calculate(seq)
+    #                              pssm.calculate(seq))
+    return '{0:.2f}'.format(pssm.calculate(seq))
+
+
+def score_site2(seq, model):
     from random import randrange
     return randrange(2)
 
@@ -99,15 +98,15 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
             start = int(re.match('.+transcript_chrom_start="([^"]+)"',
                                  seq_record.description).group(1))
             # intron fasta file?
+
+            intron_count = len(exon_positions['beg']) - 1  # Is this right?
             if verb:
                 print ('Exons:')
-            if verb:
                 for i in range(0, intron_count + 1):
                     print (
                     '{} - b: {} e: {}'.format(i + 1, exon_positions['beg'][i],
                                               exon_positions['end'][i]))
                     # print ('There should be {} introns.'.format(intron_count))
-            intron_count = len(exon_positions['beg']) - 1  # Is this right?
 
             if intron_count < min_introns or intron_count > max_introns:
                 if verb:
@@ -188,28 +187,32 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
             if example > 4 and test:
                 break
     # delete output file if not enough_introns?
-    if intron_count > min_introns:
-        don_instances = don # [Seq(x) for x in don]
-        acc_instances = acc # [Seq(x) for x in acc]
-        from Bio import motifs
-        don_motif = motifs.create(don_instances)
-        acc_motif = motifs.create(acc_instances)
-        print (don_motif.alphabet)
+            if intron_count > min_introns:
+                don_instances = don # [Seq(x) for x in don]
+                acc_instances = acc # [Seq(x) for x in acc]
+
+                don_motif = motifs.create(don_instances)
+                acc_motif = motifs.create(acc_instances)
+
     with open(intron_file, 'r+') as handle:
         lines = handle.readlines()
         handle.seek(len(headline))
         # handle.truncate
         for line in lines[1:]:
-
+            intron_count = int(line.split()[5].split('/')[1])
             intron = line.split()[-1]
             if intron_count > min_introns:
+                if verb:
+                    print ('{} is enough to score.\n'.format(intron_count))
                 d = score_site(Seq(intron[:don_len], don_motif.alphabet), don_motif)
                 a = score_site(Seq(intron[-acc_len:], acc_motif.alphabet), acc_motif)
             else:
+
                 d = 'NA'
                 a = 'NA'
             order = ('\t'.join(line.split()[:-1]), d, a, intron)
             handle.write('{}\t{}\t{}\t{}\n'.format(*order))
+        print ('Processed {} introns'.format(len(lines)-1))
 
 
 if __name__ == "__main__":
