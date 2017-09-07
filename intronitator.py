@@ -70,18 +70,22 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
             header)
 
 
-def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):  #want the chrom (refers to coordinates)
+def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
+                  multi_species=False):  #want the chrom (refers to coordinates)
     intron_file = '{}_introns.FASTA'.format(fasta[:-6])
     headline = '# id chr beg end str n/m len gc ambig? don acc seq\n'
     enough_introns = False
+
+    don_motif = {}
+    acc_motif = {}
     with open(fasta) as handle:
         o = open(intron_file, 'w')
         o.write(headline)
         example = 0
 
 
-        don = []
-        acc = []
+        don = {}
+        acc = {}
         for seq_record in SeqIO.FastaIO.FastaIterator(handle,
                                                       title2ids=get_exon_id):
             if verb:
@@ -93,6 +97,8 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
                 exon_positions[pos[i]] = [int(x) for x in r[i].split(';')]
             strand = int(re.match('.+gene_chrom_strand="([^"]+)"',
                                   seq_record.description).group(1))
+            species = re.match('.+organism_name="([^"]+)"',
+                               seq_record.description).group(1)
             if verb:
                 print ('strand: ', strand)
             start = int(re.match('.+transcript_chrom_start="([^"]+)"',
@@ -164,22 +170,23 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
                 strand_sym = '-'
             chrom = re.match('.+chr_name1="([^"]+)"',
                              seq_record.description).group(1)
-            data = [chrom, strand_sym]
 
             # Output
             s = 1
-
+            if species not in don:
+                don[species] = []
+                acc[species] = []
             for x in introns:
                 #  Setting up donor and acceptor tables
-                don.append(x[:don_len])
-                acc.append(x[-acc_len:])
+                don[species].append(x[:don_len])
+                acc[species].append(x[-acc_len:])
 
                 beg = intron_positions['beg'][s-1]
                 end = intron_positions['end'][s-1]
                 l = abs(end - beg)
-                order = (seq_record.id, data[0], beg, end, strand_sym, s,
+                order = (seq_record.id, species, chrom, beg, end, strand_sym, s,
                          intron_count, l)
-                line = '{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t'.format(*order) +\
+                line = '{}\t{}\t{}\t{}\t{}\t{}\t{}/{}\t{}\t'.format(*order) +\
                        '\t'.join(str(d) for d in analyze_intron(x))+'\t'+str(x)
                 o.write(line+'\n')
                 s += 1
@@ -187,29 +194,22 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100):
             if example > 4 and test:
                 break
     # delete output file if not enough_introns?
-            if intron_count > min_introns:
-                don_instances = don # [Seq(x) for x in don]
-                acc_instances = acc # [Seq(x) for x in acc]
-
-                don_motif = motifs.create(don_instances)
-                acc_motif = motifs.create(acc_instances)
+            don_motif[species] = motifs.create(don[species])
+            acc_motif[species] = motifs.create(acc[species])
 
     with open(intron_file, 'r+') as handle:
         lines = handle.readlines()
         handle.seek(len(headline))
         # handle.truncate
         for line in lines[1:]:
-            intron_count = int(line.split()[5].split('/')[1])
             intron = line.split()[-1]
-            if intron_count > min_introns:
-                if verb:
-                    print ('{} is enough to score.\n'.format(intron_count))
-                d = score_site(Seq(intron[:don_len], don_motif.alphabet), don_motif)
-                a = score_site(Seq(intron[-acc_len:], acc_motif.alphabet), acc_motif)
-            else:
-
-                d = 'NA'
-                a = 'NA'
+            species = line.split()[1]
+            d = score_site(Seq(intron[:don_len],
+                               don_motif[species].alphabet),
+                           don_motif[species])
+            a = score_site(Seq(intron[-acc_len:],
+                               acc_motif[species].alphabet),
+                           acc_motif[species])
             order = ('\t'.join(line.split()[:-1]), d, a, intron)
             handle.write('{}\t{}\t{}\t{}\n'.format(*order))
         print ('Processed {} introns'.format(len(lines)-1))
@@ -226,10 +226,12 @@ if __name__ == "__main__":
                         help='Multiple flags increase verbosity')
     parser.add_argument('-test', '-t', action='store_true',
                         help='Do not store the data')
+    # parser.add_argument('-ms', '-multispecies', action='store_true',
+    #                    help='Account for multiple species in the FASTA')
     args = parser.parse_args()
 
     # interp input
-    strip_introns(args.file_name, args.verbose, args.test)
+    strip_introns(args.file_name, args.verbose, args.test,)
 
 
 # gene_name1="AT2G32350" transcript_name1="AT2G32350.1" organism_name="Athaliana_Araport11" chr_name1="Chr2" gene_chrom_start="13734945" gene_chrom_end="13735788" gene_chrom_strand="1" transcript_id="37375937" transcript_chrom_start="13734945" transcript_chrom_end="13735788" peptide_name="37375937_peptide" exon_chrom_start="13734945;13735345" exon_chrom_end="13735263;13735788" exon_cds_start="13734979;13735345" exon_cds_end="13735263;13735788" 5_utr_start="13734945" 5_utr_end="13734978" 3_utr_start="" 3_utr_end=""
