@@ -72,8 +72,8 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
 
 def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
                   multi_species=False):  #want the chrom (refers to coordinates)
-    intron_file = '{}_introns.FASTA'.format(fasta[:-6])
-    headline = '# id chr beg end str n/m len gc ambig? don acc seq\n'
+    intron_file = '{}_introns1.FASTA'.format(fasta[:-6])
+    headline = '# id chr beg end str n/m len gc ambig? seq\n'
     enough_introns = False
 
     don_motif = {}
@@ -196,10 +196,14 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
     # delete output file if not enough_introns?
             don_motif[species] = motifs.create(don[species])
             acc_motif[species] = motifs.create(acc[species])
+    o.close()
 
-    with open(intron_file, 'r+') as handle:
-        lines = handle.readlines()
-        handle.seek(len(headline))
+    with open(intron_file) as out1:
+        intron_file_2 = '{}_introns.FASTA'.format(fasta[:-6])
+        out2 = open(intron_file_2, 'w')
+        headline = '# id chr beg end str n/m len gc ambig? don acc seq\n'
+        out2.write(headline)
+        lines = out1.readlines()
         # handle.truncate
         for line in lines[1:]:
             intron = line.split()[-1]
@@ -211,8 +215,12 @@ def strip_introns(fasta, verb=None, test=False, min_introns=5, max_introns=100,
                                acc_motif[species].alphabet),
                            acc_motif[species])
             order = ('\t'.join(line.split()[:-1]), d, a, intron)
-            handle.write('{}\t{}\t{}\t{}\n'.format(*order))
-        print ('Processed {} introns'.format(len(lines)-1))
+            out2.write('{}\t{}\t{}\t{}\n'.format(*order))
+        out2.close()
+        if len(lines) == 0:
+            print ('Requires Python 3 for additional processing')
+        else:
+            print ('Processed {} introns'.format(len(lines)-1))
 
 
 if __name__ == "__main__":
