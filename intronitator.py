@@ -231,7 +231,7 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=35,
     with open(intron_file) as out1:
         intron_file_2 = '{}_introns_2.FASTA'.format(fasta[:-6])
         out2 = open(intron_file_2, 'w')
-        headline = '# id chr beg end str n/m len gc ambig? don acc seq\n'
+        headline = '# id chr beg end str n/m len gc ambig? don acc 2mer seq\n'
         out2.write(headline)
         lines = out1.readlines()
         good_ones = 0
