@@ -84,7 +84,7 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
             header)
 
 
-def strip_introns(fasta, verb=None, test=False, min_intron_len=5,
+def strip_introns(fasta, verb=None, test=False, min_intron_len=35,
                   max_intron_len=10000, multi_species=False):
     # want the chrom (refers to coordinates)
     intron_file = '{}_introns_1.FASTA'.format(fasta[:-6])
@@ -108,6 +108,12 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=5,
                                                       title2ids=get_exon_id):
             if verb:
                 print ("Seq Record: " + seq_record.name)
+            chrom = re.match('.+chr_name1="([^"]+)"',
+                             seq_record.description).group(1)
+            if 'scaffold' in chrom:
+                if verb:
+                    print ('Scaffolding skipped!')
+                continue
             exon_positions = {}
             pos = ['beg', 'end']
             r = seq_record.name.split('|')
@@ -178,8 +184,6 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=5,
                 strand_sym = '+'
             else:
                 strand_sym = '-'
-            chrom = re.match('.+chr_name1="([^"]+)"',
-                             seq_record.description).group(1)
 
             # Output
             s = 1
@@ -187,12 +191,14 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=5,
                 don[species] = []
                 acc[species] = []
                 dinuc[species] = []
+                dinuc_motif[species] = []
             for x in introns:
                 # If intron is not anomalous...
                 if not (len(x) > max_intron_len or len(x) < min_intron_len):
                     #  Setting up donor and acceptor tables
-                    don[species].append(x[:(don_len-1)])
-                    acc[species].append(x[-acc_len:])
+                    # upper is good???
+                    don[species].append(x.upper()[:don_len])
+                    acc[species].append(x.upper()[-acc_len:])
                     dinuc[species].extend(dinucs(x))
 
                 beg = intron_positions['beg'][s-1]
@@ -214,7 +220,7 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=5,
     for species in don:
         don_motif[species] = motifs.create(don[species])
         acc_motif[species] = motifs.create(acc[species])
-        dinuc_motif[species] = motifs.create(dinuc[species])
+       # dinuc_motif[species] = motifs.create(dinuc[species])
         dinuc_dist[species] = {}
         for di in dinuc[species]:
             try:
@@ -235,7 +241,7 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=5,
                 continue
             species = line.split()[1]
             good_ones += 1
-            d = score_site(Seq(intron[:(don_len-1)],
+            d = score_site(Seq(intron[:don_len],
                                don_motif[species].alphabet),
                            don_motif[species])
             a = score_site(Seq(intron[-acc_len:],

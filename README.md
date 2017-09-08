@@ -10,6 +10,7 @@ So far we have:
 * Intron file production with introniator.py which scores acceptor and donor sites.
 
 Working on:
+* Dealing with lowercase and unambiguous sequences (see line 195 of intronitator)
 * Giving FASTA headers JSON formats
 * Scoring 2mers of introns
 * Motif finding algorithms
