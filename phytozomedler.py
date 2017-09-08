@@ -65,6 +65,14 @@ attrSelections = {
                                17, 18, 0, 1, 2, 3, 4, 5, 6, 7],
             'formats': ['FASTA'],
         },
+    'peptideLite':
+        {
+            'data_types':
+                ['peptide_sequence', 'organism_name', 'gene_name1',
+                 'transcript_name1', 'transcript_id', 'peptide_name'],
+            'data_positions': [float('nan'), 0, 1, 2, 3, 4],
+            'formats': ['FASTA'],
+        },
     'allFeatures':
         {
             'data_types':
@@ -164,7 +172,7 @@ def replace_headers(fasta, attributeset):
         # put all of the header data into xml style tags
         for i in range(0, len(attrSelections[attributeset]['data_positions'])):
             if not isnan(attrSelections[attributeset]['data_positions'][i]):
-                out_string = '{}{}="{}" '.format(out_string,
+                out_string += '{}="{}" '.format(
                     attrSelections[attributeset]['data_types'][i],
                     vs[attrSelections[attributeset]['data_positions'][i]])
         return out_string

@@ -85,7 +85,7 @@ def get_exon_id(header):  # Gives each record.name the exon coords septed by |
 
 
 def strip_introns(fasta, verb=None, test=False, min_intron_len=35,
-                  max_intron_len=10000, multi_species=False):
+                  max_intron_len=10000, multi_species=False, peptide=''):
     # want the chrom (refers to coordinates)
     intron_file = '{}_introns_1.FASTA'.format(fasta[:-6])
     headline = '# id chr beg end str n/m len gc ambig? seq\n'
@@ -263,8 +263,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="""Make intron fasta files""")
     parser.add_argument("file_name",
         help="fasta file input")
-    parser.add_argument("outputf", nargs="?",
-        help="Optional output file name", default="outputf.FASTA")
+    parser.add_argument("p_file", nargs="?",
+        help="Optional peptide file", default="")
     parser.add_argument('--verbose', '-v', action='count', default=0,
                         help='Multiple flags increase verbosity')
     parser.add_argument('-test', '-t', action='store_true',
@@ -274,7 +274,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # interp input
-    strip_introns(args.file_name, args.verbose, args.test,)
+    strip_introns(args.file_name, args.verbose, args.test, peptide=args.p_file)
 
 
 # gene_name1="AT2G32350" transcript_name1="AT2G32350.1" organism_name="Athaliana_Araport11" chr_name1="Chr2" gene_chrom_start="13734945" gene_chrom_end="13735788" gene_chrom_strand="1" transcript_id="37375937" transcript_chrom_start="13734945" transcript_chrom_end="13735788" peptide_name="37375937_peptide" exon_chrom_start="13734945;13735345" exon_chrom_end="13735263;13735788" exon_cds_start="13734979;13735345" exon_cds_end="13735263;13735788" 5_utr_start="13734945" 5_utr_end="13734978" 3_utr_start="" 3_utr_end=""
