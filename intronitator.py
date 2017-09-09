@@ -79,22 +79,32 @@ def pseudo_score_site2(seq, model):
 
 
 def get_exon_id(header):  # Gives each record.name the exon coords septed by |
-    return (re.match('.+transcript_name1="([^"]+)"', header).group(1),
+    return (re.match('.*transcript_name1="([^"]+)"', header).group(1),
             '|'.join(re.findall('exon_chrom_[star|end]+="([\d;]+)"', header)),
             header)
+
+
+def get_pep_id(header):
+    return re.match('.*peptide_name="([^"]+)"', header).group(1)
 
 
 def strip_introns(fasta, verb=None, test=False, min_intron_len=35,
                   max_intron_len=10000, multi_species=False, peptide=''):
     # want the chrom (refers to coordinates)
     intron_file = '{}_introns_1.FASTA'.format(fasta[:-6])
-    headline = '# id chr beg end str n/m len gc ambig? seq\n'
+    p_head = ''
+    if peptide != '':
+        peptide_dict = SeqIO.index(peptide, "fasta", key_function=get_pep_id)
+        p_head = ' pep'
+    headline = '# id chr beg end str n/m len gc ambig?{} seq\n'.format(p_head)
     enough_introns = False
 
     don_motif = {}
     acc_motif = {}
     dinuc_motif = {}
     dinuc_dist = {}
+
+
     with open(fasta) as handle:
         o = open(intron_file, 'w')
         o.write(headline)
@@ -114,6 +124,7 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=35,
                 if verb:
                     print ('Scaffolding skipped!')
                 continue
+
             exon_positions = {}
             pos = ['beg', 'end']
             r = seq_record.name.split('|')
@@ -208,6 +219,9 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=35,
                 order = [seq_record.id, species, chrom, str(beg), str(end),
                          strand_sym, intron_set, str(l)]
                 order.extend(analyze_intron(x))
+                if peptide != '':
+                    pep_id = get_pep_id(seq_record.description)
+                    order.append(str(len(peptide_dict[pep_id])))
                 order.append(str(x))
                 o.write('\t'.join(order)+'\n')
                 s += 1
@@ -231,7 +245,12 @@ def strip_introns(fasta, verb=None, test=False, min_intron_len=35,
     with open(intron_file) as out1:
         intron_file_2 = '{}_introns_2.FASTA'.format(fasta[:-6])
         out2 = open(intron_file_2, 'w')
-        headline = '# id chr beg end str n/m len gc ambig? don acc 2mer seq\n'
+        if peptide != '':
+            headline = '# id chr beg end str n/m len gc' +\
+                       ' ambig? pep don acc 2mer seq\n'
+        else:
+            headline = '# id chr beg end str n/m len gc' + \
+                       ' ambig? don acc 2mer seq\n'
         out2.write(headline)
         lines = out1.readlines()
         good_ones = 0

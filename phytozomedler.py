@@ -68,8 +68,8 @@ attrSelections = {
     'peptideLite':
         {
             'data_types':
-                ['peptide_sequence', 'organism_name', 'gene_name1',
-                 'transcript_name1', 'transcript_id', 'peptide_name'],
+                ['peptide_sequence', 'peptide_name', 'transcript_name1',
+                 'organism_name', 'gene_name1', 'transcript_id', ],
             'data_positions': [float('nan'), 0, 1, 2, 3, 4],
             'formats': ['FASTA'],
         },
@@ -136,7 +136,7 @@ def test_selections(filts, attrs, form):
 def make_my_xml(filters, attributes, form):
     s.host = "phytozome.jgi.doe.gov"
     # s._set_host(,True)
-    s.custom_query(virtualScheme="zome_mart", formatter=form)
+    s.custom_query(virtualScheme="zome_mart", formatter=form, unique=1)
     s.add_dataset_to_xml('phytozome')
     filters, attributes = test_selections(filters, attributes, form)
     for f in filters:
