@@ -9,7 +9,7 @@ from math import isnan
 # from jcvi import biomart
 # s = Mart(host="phytozome.jgi.doe.gov" name="phytozome")
 
-s = BioMart()
+s = BioMart(secure=True)
 ribosomal_kegg_IDs = \
     [
         'K01977', 'K01979', 'K01980', 'K01981', 'K01982', 'K01985', 'K01986',
@@ -134,6 +134,7 @@ def test_selections(filts, attrs, form):
 
 
 def make_my_xml(filters, attributes, form):
+    # s.secure = True
     s.host = "phytozome.jgi.doe.gov"
     # s._set_host(,True)
     s.custom_query(virtualScheme="zome_mart", formatter=form, unique=1)
