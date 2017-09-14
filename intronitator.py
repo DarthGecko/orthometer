@@ -1,12 +1,11 @@
 # Nick Weiner 2017
 # introninator.py
-# Getting introns from FASTA fiels made by phytozomedler
-from Bio import SeqIO
+# Getting introns from FASTA files made by phytozomedler
 import re
 from Bio import SeqIO
 from Bio.Seq import Seq
 from Bio import motifs
-from Bio.Alphabet import IUPAC
+
 don_len = 5
 acc_len = 8
 
