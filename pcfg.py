@@ -16,4 +16,4 @@ def recurse1(seq, parts):
     return data_set
 
 def recurse2(seq, i):
-    retun seq[:i]
+    return seq[:i]

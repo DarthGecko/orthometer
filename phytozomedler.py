@@ -133,19 +133,30 @@ def test_selections(filts, attrs, form):
     return filts, attrs
 
 
-def make_my_xml(filters, attributes, form):
+def make_my_xml(filters, attributes, form, new=''):
     # s.secure = True
     s.host = "phytozome.jgi.doe.gov"
     # s._set_host(,True)
     s.custom_query(virtualScheme="zome_mart", formatter=form, unique=1)
     s.add_dataset_to_xml('phytozome')
-    filters, attributes = test_selections(filters, attributes, form)
+    if new == '':
+        filters, attributes = test_selections(filters, attributes, form)
+
     for f in filters:
-        print (filtSelections[f])
-        if f != 'none':
-            s.add_filter_to_xml(*filtSelections[f])
-    for a in attrSelections[attributes]['data_types']:
-        s.add_attribute_to_xml(a)
+        if 'f' in new:
+            s.add_filter_to_xml(*f)
+        else:
+            print (filtSelections[f])
+            if f != 'none':
+                s.add_filter_to_xml(*filtSelections[f])
+
+    if 'a' in new:
+        for a in attributes:
+            print(a)
+            s.add_attribute_to_xml(a)
+    else:
+        for a in attrSelections[attributes]['data_types']:
+            s.add_attribute_to_xml(a)
     return s.get_xml()
 
 
